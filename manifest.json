@@ -1,0 +1,13 @@
+{
+  "name": "Vimeo Resumer",
+  "description": "Automatically resume Vimeo videos from where you last left off.",
+  "version": "1.0",
+  "manifest_version": 3,
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["https://vimeo.com/*"],
+      "js": ["vimeo-resumer.js"]
+    }
+  ]
+}
