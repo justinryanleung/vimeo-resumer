@@ -2,7 +2,7 @@
 
 A chrome extension that automatically resumes Vimeo videos from where you last left off.
 
-### Installation Guide
+## Installation Guide
 
 1. Clone or download the zip for this respository.
 
