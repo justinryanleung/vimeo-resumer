@@ -7,27 +7,50 @@ async function vimeoResumerScript() {
   // Check if video player is present, if not, then exit.
   const focusTargetEl = document.getElementsByClassName('focus-target')[0]
   const isVideoPlayerPresent = typeof focusTargetEl !== 'undefined'
-  if (!isVideoPlayerPresent) return
+
+  if (!isVideoPlayerPresent) {
+    console.log('Video player is not present.')
+    return
+  }
 
   // Check if current video URL is persisted in storage, if not, then persist in storage and exit.
   const currentVideoURLWithoutParams = window.location.origin + window.location.pathname
-  const lastWatchTimeInSeconds = await getObjectFromLocalStorage(currentVideoURLWithoutParams)
+  let lastWatchTimeInSeconds = await getObjectFromLocalStorage(currentVideoURLWithoutParams)
   const isCurrentVideoURLPersisted = typeof lastWatchTimeInSeconds !== 'undefined'
 
+  // Video and last play time localstorage update interval.
   setInterval(() => {
-    // If video is not playing, skip interval.
     const statePlayingEl = document.getElementsByClassName('state-playing')[0]
     const isVideoPlaying = typeof statePlayingEl !== 'undefined'
-    if (!isVideoPlaying) return
+    const currentPlayTimeInSeconds = parseInt(focusTargetEl.getAttribute('aria-valuenow'))
+    const isPersistedTimeOutdated = lastWatchTimeInSeconds !== currentPlayTimeInSeconds
+
+    // If video is paused but the play bar is being used, save jumped to times.
+    if (!isVideoPlaying && isPersistedTimeOutdated) {
+      console.error('Video is paused but the play bar is being used, save jumped to times.', { [currentVideoURLWithoutParams]: currentPlayTimeInSeconds })
+      saveObjectInLocalStorage({ [currentVideoURLWithoutParams]: currentPlayTimeInSeconds })
+      lastWatchTimeInSeconds = currentPlayTimeInSeconds
+      return
+    }
+
+    // If video isn't playing, skip interval.
+    if (!isVideoPlaying) {
+      console.log('Video is not playing, skipping interval.')
+      return
+    }
 
     // If video is playing, then update current play time in storage.
-    const currentPlayTimeInSeconds = parseInt(focusTargetEl.getAttribute('aria-valuenow'))
-    saveObjectInLocalStorage({ [currentVideoURLWithoutParams]: currentPlayTimeInSeconds })
-    // console.log('Set in chrome local storage:', { [currentVideoURLWithoutParams]: currentPlayTimeInSeconds })
+    const data = { [currentVideoURLWithoutParams]: currentPlayTimeInSeconds }
+    saveObjectInLocalStorage(data)
+
+    console.log('Set in chrome local storage:', data)
   }, EXECUTION_INTERVAL_MS)
 
+  // Persist video URL if it isn't already. Set timestamp equal to start of video, so zero.
   if (!isCurrentVideoURLPersisted) {
-    await saveObjectInLocalStorage({ [currentVideoURLWithoutParams]: VIDEO_START_TIME_S })
+    const data = { [currentVideoURLWithoutParams]: VIDEO_START_TIME_S }
+    await saveObjectInLocalStorage(data)
+    console.log('Persisting video for the first time.', data)
     return
   }
 
@@ -38,6 +61,7 @@ async function vimeoResumerScript() {
     lastPlayTimeFromURL = parseInt(window.location.href.match(/#t=(.*?)s/i)[1])
   }
 
+  // Reload page and start video at last play time.
   if (lastWatchTimeInSeconds !== lastPlayTimeFromURL && lastWatchTimeInSeconds !== VIDEO_START_TIME_S) {
     window.location.assign(`${currentVideoURLWithoutParams}#t=${lastWatchTimeInSeconds}s`)
     window.location.reload()
